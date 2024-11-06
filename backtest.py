@@ -17,10 +17,10 @@ def generate_signal(df:pd.DataFrame)->pd.Series:
     N = 20
     k = 2
     Ma = df['close'].rolling(N).mean()
-    Sd = np.sqrt((df['close'] - Ma)**2 / N)
+    Sd = df['close'].rolling(N).std()
     Mb = Ma + k*Sd
     Dn = Ma - k*Sd
-    raw_Signal = (df['close'] < Dn) * 0.1
+    raw_Signal = (df['close'] < Dn + 0.5*Sd) * (df['close'] > Dn - 0.5*Sd) * 0.1
     
     # raw_Signal = -(df['close'].astype(float)/df['open'].astype(float) -1)*100
     # raw_Signal = raw_Signal *(raw_Signal>0)
@@ -45,8 +45,8 @@ def calculate_cost(Position:pd.Series):
     return cost
 
 def main():
-    df = pd.read_parquet('2024.parquet')[:5000]
-    window = 5
+    df = pd.read_parquet('2024.parquet')[:]
+    window = 10
     Cr = calculate_Cr(df, 5)
     row_Signal = generate_signal(df)
     Signal = position_restrict(row_Signal, window)
