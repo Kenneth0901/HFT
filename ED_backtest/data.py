@@ -1,5 +1,3 @@
-# data.py
-
 import datetime
 import os, os.path
 import pandas as pd
@@ -7,11 +5,6 @@ import pandas as pd
 from abc import ABCMeta, abstractmethod
 
 from event import MarketEvent
-
-
-# data.py
-
-
 
 
 class DataHandler(object):
@@ -46,8 +39,6 @@ class DataHandler(object):
         raise NotImplementedError("Should implement update_bars()")
     
 
-# data.py
-
 class HistoricCSVDataHandler(DataHandler):
     """
     HistoricCSVDataHandler is designed to read CSV files for
@@ -79,7 +70,6 @@ class HistoricCSVDataHandler(DataHandler):
 
         self._open_convert_csv_files()
 
-    # data.py
 
     def _open_convert_csv_files(self):
         """
