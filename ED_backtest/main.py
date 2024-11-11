@@ -1,15 +1,16 @@
 from data import DataHandler
-from event import Event
 from execution import ExecutionHandler
 from performance import Performance
-from portfolio import Portfolio
-from strategy import Strategy
+from portfolio import NaivePortfolio
+from strategy import BollStrategy
 from queue import Queue
+from time import time
+
 
 events = Queue(maxsize=0)
 bars = DataHandler()
-strategy = Strategy()
-port = Portfolio()
+port = NaivePortfolio(bars, events)
+strategy = BollStrategy(bars, port, events)
 broker = ExecutionHandler()
 
 
@@ -19,7 +20,6 @@ while True:
         bars.update_bars()
     else:
         break
-    
     # Handle the events
     while True:
         try:
@@ -30,7 +30,7 @@ while True:
             if event is not None:
                 if event.type == 'MARKET':
                     strategy.calculate_signals(event)
-                    port.update_timeindex(event)
+                    port.update_positions_and_holdings(event)
 
                 elif event.type == 'SIGNAL':
                     port.update_signal(event)
@@ -42,4 +42,4 @@ while True:
                     port.update_fill(event)
 
     # 10-Minute heartbeat
-    time.sleep(10*60)
+    # time.sleep(60)

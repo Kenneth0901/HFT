@@ -4,8 +4,8 @@ import pandas as pd
 from queue import Queue
 
 from abc import ABCMeta, abstractmethod
-
-from event import SignalEvent
+from portfolio import NaivePortfolio
+from event import SignalEvent, OrderEvent
 
 
 
@@ -91,3 +91,41 @@ class BuyAndHoldStrategy(Strategy):
                         self.bought[s] = True  
 
                         
+
+class BollStrategy(Strategy):
+    def __init__(self, bars, port:NaivePortfolio, events) -> None:
+        """
+        布林带下轨建仓，10%止盈止损
+        """
+        self.bars = bars
+        self.symbol_list = self.bars.symbol_list
+        self.events = events
+        self.port = port
+
+
+    def calculate_signals(self, event):
+        if event.type == 'Market':
+            for s in self.symbol_list:
+                bars = self.bars.get_latest_bars(s, N=25)
+                order_history = self.port.order_history
+
+                if bars is not None and bars != []:
+                        #(symbol, datetime, open, low, high, close, volume)
+                        close = [bar[5] for bar in bars]
+                        ma = close.mean()
+                        std = close.std()
+                        floor = ma-2*std
+                        top = ma-2*std
+                        if bars[-1][5] == floor:
+                            # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
+                            signal = SignalEvent(bars[0][0], bars[0][1], 'LONG')
+                            self.events.put(signal)
+
+                for order in order_history:
+                    if  bars[-1][5] <= order['price']*0.99 or bars[-1][5] >= order['price']*1.02 or bars[-1][5] == top:
+                        order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
+                        self.events.put(order_event)
+
+
+
+        

@@ -1,5 +1,3 @@
-# portfolio.py
-
 import datetime
 import numpy as np
 import pandas as pd
@@ -8,7 +6,7 @@ from queue import Queue
 from abc import ABCMeta, abstractmethod
 from math import floor
 
-from event import FillEvent, OrderEvent
+from event import MarketEvent, FillEvent, OrderEvent
 from performance import create_sharpe_ratio, create_drawdowns
 
 class Portfolio(object):
@@ -63,7 +61,7 @@ class NaivePortfolio(Portfolio):
         self.symbol_list = self.bars.symbol_list
         self.start_date = start_date
         self.initial_capital = initial_capital
-        
+        self.order_history = []
         self.all_positions = self.construct_all_positions()
         self.current_positions = dict( (k,v) for k, v in [(s, 0) for s in self.symbol_list] )
 
@@ -105,7 +103,7 @@ class NaivePortfolio(Portfolio):
         return d
     
 
-    def update_positions_and_holdings(self, event):
+    def update_positions_and_holdings(self, event:MarketEvent):
         """
         Adds a new record to the positions matrix for the current 
         market data bar. This reflects the PREVIOUS bar, i.e. all
@@ -144,26 +142,7 @@ class NaivePortfolio(Portfolio):
         self.all_holdings.append(dh)
 
 
-    def update_positions_from_fill(self, fill):
-        """
-        Takes a FilltEvent object and updates the position matrix
-        to reflect the new position.
-
-        Parameters:
-        fill - The FillEvent object to update the positions with.
-        """
-        # Check whether the fill is a buy or sell
-        fill_dir = 0
-        if fill.direction == 'BUY':
-            fill_dir = 1
-        if fill.direction == 'SELL':
-            fill_dir = -1
-
-        # Update positions list with new quantities
-        self.current_positions[fill.symbol] += fill_dir*fill.quantity
-
-
-    def update_holdings_from_fill(self, fill):
+    def update_info_from_fill(self, fill:FillEvent):
         """
         Takes a FillEvent object and updates the holdings matrix
         to reflect the holdings value.
@@ -178,6 +157,9 @@ class NaivePortfolio(Portfolio):
         if fill.direction == 'SELL':
             fill_dir = -1
 
+        # Update positions list with new quantities
+        self.current_positions[fill.symbol] += fill_dir*fill.quantity
+
         # Update holdings list with new quantities
         fill_cost = self.bars.get_latest_bars(fill.symbol)[0][5]  # Close price
         cost = fill_dir * fill_cost * fill.quantity
@@ -185,6 +167,17 @@ class NaivePortfolio(Portfolio):
         self.current_holdings['commission'] += fill.commission
         self.current_holdings['cash'] -= (cost + fill.commission)
         self.current_holdings['total'] -= (cost + fill.commission)
+
+        if fill_dir == 1:
+        # Update order_history
+            self.order_history.append({
+                "timestamp": fill.timestamp,
+                "symbol": fill.symbol,
+                "quantity": fill.quantity,
+                "direction": fill.direction,
+                "price": fill_cost,  
+                "status": "filled"
+            })
 
 
 
@@ -194,8 +187,7 @@ class NaivePortfolio(Portfolio):
         from a FillEvent.
         """
         if event.type == 'FILL':
-            self.update_positions_from_fill(event)
-            self.update_holdings_from_fill(event)
+            self.update_info_from_fill(event)
 
 
     def generate_naive_order(self, signal):
@@ -226,6 +218,7 @@ class NaivePortfolio(Portfolio):
             order = OrderEvent(symbol, order_type, abs(cur_quantity), 'SELL')
         if direction == 'EXIT' and cur_quantity < 0:
             order = OrderEvent(symbol, order_type, abs(cur_quantity), 'BUY')
+
         return order
 
     def update_signal(self, event):

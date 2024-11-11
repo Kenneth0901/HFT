@@ -110,18 +110,19 @@ class HistoricCSVDataHandler(DataHandler):
 
         # Reindex the dataframes
         for s in self.symbol_list:
-            self.symbol_data[s] = self.symbol_data[s].reindex(index=comb_index, method='pad').iterrows()
+            self.symbol_data[s] = self.symbol_data[s].reindex(index=comb_index, method='pad').itertuples()
 
 
     def _get_new_bar(self, symbol):
         """
         Returns the latest bar from the data feed as a tuple of 
-        (sybmbol, datetime, open, low, high, close, volume).
+        (symbol, datetime, open, low, high, close, volume).
         """
         for b in self.symbol_data[symbol]:
             yield tuple([symbol, datetime.datetime.strptime(b[0], '%Y-%m-%d %H:%M:%S'), 
                         b[1][0], b[1][1], b[1][2], b[1][3], b[1][4]])
             
+
 
 
     def get_latest_bars(self, symbol, N=1):
@@ -145,7 +146,7 @@ class HistoricCSVDataHandler(DataHandler):
         """
         for s in self.symbol_list:
             try:
-                bar = self._get_new_bar(s).next()
+                bar = next(self._get_new_bar(s))
             except StopIteration:
                 self.continue_backtest = False
             else:
