@@ -109,7 +109,11 @@ class BollStrategy(Strategy):
                 bars = self.bars.get_latest_bars(s, N=20)
                 new_order_history = []
                 if bars is not None and bars != []:
-                        # (symbol, datetime, open, low, high, close, volume)
+                        
+                        #bar格式如下
+                        # (0: symbol, 1: datetime, 2: open, 3: low, 4: high, 5: volume, 6: end_time, 
+                        # 7: qutoe_volume, 8: trades, 9: taker_base_volume, 10: taker_quote_volume).
+
                         close = pd.Series([bar[5] for bar in bars])
                         ma = close.mean()
                         std = close.std()
@@ -122,7 +126,7 @@ class BollStrategy(Strategy):
                     
 
                 for order in self.port.order_history:
-                    if  bars[-1][5] <= order['price']*0.9 or bars[-1][5] >= order['price']*1.1 or bars[-1][5] >= top:
+                    if  bars[-1][5] <= order['price']*0.98 or bars[-1][5] >= order['price']*1.1 or bars[-1][5] >= top:
                         order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
                         self.events.put(order_event)
                     else: new_order_history.append(order)
