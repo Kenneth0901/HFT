@@ -104,27 +104,32 @@ class BollStrategy(Strategy):
 
 
     def calculate_signals(self, event):
-        if event.type == 'Market':
+        if event.type == 'MARKET':
             for s in self.symbol_list:
-                bars = self.bars.get_latest_bars(s, N=25)
-                order_history = self.port.order_history
-
+                bars = self.bars.get_latest_bars(s, N=20)
+                new_order_history = []
                 if bars is not None and bars != []:
-                        #(symbol, datetime, open, low, high, close, volume)
-                        close = [bar[5] for bar in bars]
+                        # (symbol, datetime, open, low, high, close, volume)
+                        close = pd.Series([bar[5] for bar in bars])
                         ma = close.mean()
                         std = close.std()
-                        floor = ma-2*std
-                        top = ma-2*std
-                        if bars[-1][5] == floor:
+                        floor = ma - 3*std
+                        top = ma + 3*std
+                        if bars[-1][5] <= floor:
                             # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
-                            signal = SignalEvent(bars[0][0], bars[0][1], 'LONG')
+                            signal = SignalEvent(bars[0][0], bars[0][1], 'LONG', strength=0.1)
                             self.events.put(signal)
+                    
 
-                for order in order_history:
-                    if  bars[-1][5] <= order['price']*0.99 or bars[-1][5] >= order['price']*1.02 or bars[-1][5] == top:
+                for order in self.port.order_history:
+                    if  bars[-1][5] <= order['price']*0.9 or bars[-1][5] >= order['price']*1.1 or bars[-1][5] >= top:
                         order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
                         self.events.put(order_event)
+                    else: new_order_history.append(order)
+
+                self.port.order_history = new_order_history
+
+                    
 
 
 

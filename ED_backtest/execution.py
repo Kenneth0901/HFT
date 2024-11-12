@@ -4,7 +4,7 @@ from queue import Queue
 from abc import ABCMeta, abstractmethod
 
 from event import FillEvent, OrderEvent
-
+from datahandler import HistoricParquetDataHandler
 
 class ExecutionHandler(object):
     """
@@ -44,7 +44,7 @@ class SimulatedExecutionHandler(ExecutionHandler):
     handler.
     """
     
-    def __init__(self, events):
+    def __init__(self, bars:HistoricParquetDataHandler, events):
         """
         Initialises the handler, setting the event queues
         up internally.
@@ -52,6 +52,7 @@ class SimulatedExecutionHandler(ExecutionHandler):
         Parameters:
         events - The Queue of Event objects.
         """
+        self.bars = bars
         self.events = events
 
     def execute_order(self, event):
@@ -63,6 +64,7 @@ class SimulatedExecutionHandler(ExecutionHandler):
         event - Contains an Event object with order information.
         """
         if event.type == 'ORDER':
-            fill_event = FillEvent(datetime.datetime.now(datetime.timezone.utc), event.symbol,
-                                   'ARCA', event.quantity, event.direction, None)
+            bars = self.bars.get_latest_bars(event.symbol, N=1)
+            fill_event = FillEvent(bars[0][1], event.symbol,
+                                   'ARCA', event.quantity, event.direction, fill_cost = bars[0][5], commission=None)
             self.events.put(fill_event)

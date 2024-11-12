@@ -9,6 +9,8 @@ from math import floor
 from event import MarketEvent, FillEvent, OrderEvent
 from performance import create_sharpe_ratio, create_drawdowns
 
+import matplotlib.pyplot as plt
+
 class Portfolio(object):
     """
     The Portfolio class handles the positions and market
@@ -114,7 +116,6 @@ class NaivePortfolio(Portfolio):
         bars = {}
         for sym in self.symbol_list:
             bars[sym] = self.bars.get_latest_bars(sym, N=1)
-
         # Update positions
         dp = dict( (k,v) for k, v in [(s, 0) for s in self.symbol_list] )
         dp['datetime'] = bars[self.symbol_list[0]][0][1]
@@ -159,15 +160,19 @@ class NaivePortfolio(Portfolio):
 
         # Update positions list with new quantities
         self.current_positions[fill.symbol] += fill_dir*fill.quantity
-
+        
+       
         # Update holdings list with new quantities
         fill_cost = self.bars.get_latest_bars(fill.symbol)[0][5]  # Close price
         cost = fill_dir * fill_cost * fill.quantity
-        self.current_holdings[fill.symbol] += cost
+        self.current_holdings[fill.symbol] = self.bars.get_latest_bars(fill.symbol)[0][5] * self.current_positions[fill.symbol]
         self.current_holdings['commission'] += fill.commission
         self.current_holdings['cash'] -= (cost + fill.commission)
-        self.current_holdings['total'] -= (cost + fill.commission)
+        self.current_holdings['total'] = self.current_holdings[fill.symbol] + self.current_holdings['cash']
 
+
+        print(self.current_positions)
+        print(self.current_holdings)
         if fill_dir == 1:
         # Update order_history
             self.order_history.append({
@@ -205,14 +210,14 @@ class NaivePortfolio(Portfolio):
         direction = signal.signal_type
         strength = signal.strength
 
-        mkt_quantity = floor(100 * strength)
+        mkt_quantity = 1* strength
         cur_quantity = self.current_positions[symbol]
         order_type = 'MKT'
 
         if direction == 'LONG' and cur_quantity == 0:
             order = OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
         if direction == 'SHORT' and cur_quantity == 0:
-            order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')   
+            order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')
     
         if direction == 'EXIT' and cur_quantity > 0:
             order = OrderEvent(symbol, order_type, abs(cur_quantity), 'SELL')
@@ -250,7 +255,7 @@ class NaivePortfolio(Portfolio):
         Creates a list of summary statistics for the portfolio such
         as Sharpe Ratio and drawdown information.
         """
-        total_return = self.equity_curve['equity_curve'][-1]
+        total_return = self.equity_curve['equity_curve'].iloc[-1]
         returns = self.equity_curve['returns']
         pnl = self.equity_curve['equity_curve']
 
@@ -261,4 +266,17 @@ class NaivePortfolio(Portfolio):
                  ("Sharpe Ratio", "%0.2f" % sharpe_ratio),
                  ("Max Drawdown", "%0.2f%%" % (max_dd * 100.0)),
                  ("Drawdown Duration", "%d" % dd_duration)]
-        return stats
+        print(stats)
+        
+        
+
+    def plot_pnl(self):
+        plt.figure(figsize=(12, 6))
+        plt.plot(self.equity_curve.index, self.equity_curve['total'], label='Total PnL')
+        plt.xlabel('Datetime')
+        plt.ylabel('Total Value')
+        plt.title('PNL')
+        plt.grid(True)
+        plt.legend()
+        plt.tight_layout()
+        plt.show()

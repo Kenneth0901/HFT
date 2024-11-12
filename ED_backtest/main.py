@@ -1,17 +1,19 @@
-from data import DataHandler
-from execution import ExecutionHandler
-from performance import Performance
+from datahandler import HistoricParquetDataHandler
+from execution import SimulatedExecutionHandler
 from portfolio import NaivePortfolio
 from strategy import BollStrategy
-from queue import Queue
+import queue
 from time import time
+import pandas as pd
 
 
-events = Queue(maxsize=0)
-bars = DataHandler()
-port = NaivePortfolio(bars, events)
+start_date = pd.to_datetime(1704027720000, unit='ms')
+
+events = queue.Queue(maxsize=0)
+bars = HistoricParquetDataHandler(events, './', ['BTCUSDT'])
+port = NaivePortfolio(bars, events, start_date)
 strategy = BollStrategy(bars, port, events)
-broker = ExecutionHandler()
+broker = SimulatedExecutionHandler(bars, events)
 
 
 while True:
@@ -24,7 +26,7 @@ while True:
     while True:
         try:
             event = events.get(False)
-        except Queue.Empty:
+        except queue.Empty:
             break
         else:
             if event is not None:
@@ -40,6 +42,12 @@ while True:
 
                 elif event.type == 'FILL':
                     port.update_fill(event)
+
+
+
+port.create_equity_curve_dataframe()
+port.output_summary_stats()
+port.plot_pnl()
 
     # 10-Minute heartbeat
     # time.sleep(60)
