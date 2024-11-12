@@ -186,13 +186,14 @@ class NaivePortfolio(Portfolio):
 
 
 
-    def update_fill(self, event):
+    def update_fill(self, event:FillEvent):
         """
         Updates the portfolio current positions and holdings 
         from a FillEvent.
         """
         if event.type == 'FILL':
             self.update_info_from_fill(event)
+            # print(f"{event.timestamp} {event.symbol} {event.exchange} {event.quantity} {event.direction} {event.fill_cost}")
 
 
     def generate_naive_order(self, signal):
@@ -214,9 +215,9 @@ class NaivePortfolio(Portfolio):
         cur_quantity = self.current_positions[symbol]
         order_type = 'MKT'
 
-        if direction == 'LONG' and cur_quantity == 0:
+        if direction == 'LONG' and self.current_holdings['cash']>=0.1*self.initial_capital:
             order = OrderEvent(symbol, order_type, mkt_quantity, 'BUY')
-        if direction == 'SHORT' and cur_quantity == 0:
+        if direction == 'SHORT':
             order = OrderEvent(symbol, order_type, mkt_quantity, 'SELL')
     
         if direction == 'EXIT' and cur_quantity > 0:

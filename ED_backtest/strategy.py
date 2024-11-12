@@ -106,30 +106,30 @@ class BollStrategy(Strategy):
     def calculate_signals(self, event):
         if event.type == 'MARKET':
             for s in self.symbol_list:
-                bars = self.bars.get_latest_bars(s, N=20)
+                bars = self.bars.get_latest_bars(s, N=100)
                 new_order_history = []
                 if bars is not None and bars != []:
                         
-                        #bar格式如下
-                        # (0: symbol, 1: datetime, 2: open, 3: low, 4: high, 5: volume, 6: end_time, 
-                        # 7: qutoe_volume, 8: trades, 9: taker_base_volume, 10: taker_quote_volume).
+                    #bar格式如下
 
-                        close = pd.Series([bar[5] for bar in bars])
-                        ma = close.mean()
-                        std = close.std()
-                        floor = ma - 3*std
-                        top = ma + 3*std
-                        if bars[-1][5] <= floor:
-                            # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
-                            signal = SignalEvent(bars[0][0], bars[0][1], 'LONG', strength=0.1)
-                            self.events.put(signal)
+                    # (0: symbol, 1: datetime, 2: open, 3: low, 4: high, 5: volume, 6: end_time, 
+                    # 7: qutoe_volume, 8: trades, 9: taker_base_volume, 10: taker_quote_volume).
+                    close = pd.DataFrame(bars)[5].rolling(5).mean()[::5]
+                    ma = close.mean()
+                    std = close.std()
+                    floor = ma - 3*std
+                    top = ma + 3*std
+                    if bars[-1][5] <= floor:
+                        # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
+                        signal = SignalEvent(bars[0][0], bars[0][1], 'LONG', strength=0.1)
+                        self.events.put(signal)
                     
 
-                for order in self.port.order_history:
-                    if  bars[-1][5] <= order['price']*0.98 or bars[-1][5] >= order['price']*1.1 or bars[-1][5] >= top:
-                        order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
-                        self.events.put(order_event)
-                    else: new_order_history.append(order)
+                    for order in self.port.order_history:
+                        if  bars[-1][5] <= order['price']*0.95 or bars[-1][5] >= order['price']*1.02:
+                            order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
+                            self.events.put(order_event)
+                        else: new_order_history.append(order)
 
                 self.port.order_history = new_order_history
 
