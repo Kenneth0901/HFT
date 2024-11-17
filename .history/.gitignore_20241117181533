@@ -4143,12 +4143,3 @@ data/XRPUSDT/1731754200000.pkl
 data/XRPUSDT/1731814200000.pkl
 load_data.log
 test.ipynb
-ED_backtest/logs/test.log
-merge/ADAUSDT.pkl
-merge/BNBUSDT.pkl
-merge/BTCUSDT.pkl
-merge/DOGEUSDT.pkl
-merge/ETHUSDT.pkl
-merge/SOLUSDT.pkl
-merge/TRXUSDT.pkl
-merge/XRPUSDT.pkl

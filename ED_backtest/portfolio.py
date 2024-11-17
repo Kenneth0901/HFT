@@ -159,20 +159,20 @@ class NaivePortfolio(Portfolio):
             fill_dir = -1
 
         # Update positions list with new quantities
-        self.current_positions[fill.symbol] += fill_dir*fill.quantity
+        self.current_positions[fill.symbol] = (self.current_positions[fill.symbol] + fill_dir*fill.quantity).__round__(4)
         
        
         # Update holdings list with new quantities
         fill_cost = self.bars.get_latest_bars(fill.symbol)[0][5]  # Close price
-        cost = fill_dir * fill_cost * fill.quantity
-        self.current_holdings[fill.symbol] = self.bars.get_latest_bars(fill.symbol)[0][5] * self.current_positions[fill.symbol]
-        self.current_holdings['commission'] += fill.commission
-        self.current_holdings['cash'] -= (cost + fill.commission)
+        cost = (fill_dir * fill_cost * fill.quantity).__round__(4)
+        self.current_holdings[fill.symbol] = (self.bars.get_latest_bars(fill.symbol)[0][5] * self.current_positions[fill.symbol] ).__round__(4)
+        self.current_holdings['commission'] = (self.current_holdings['commission'] + fill.commission).__round__(4)
+        self.current_holdings['cash'] =( self.current_holdings['cash'] - (cost + fill.commission) ).__round__(4)
         self.current_holdings['total'] = self.current_holdings[fill.symbol] + self.current_holdings['cash']
 
 
-        print(self.current_positions)
-        print(self.current_holdings)
+        # print(self.current_positions)
+        # print(self.current_holdings)
         if fill_dir == 1:
         # Update order_history
             self.order_history.append({

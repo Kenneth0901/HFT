@@ -25,12 +25,12 @@ for symbol in symbol_ls:
     folder_path = f'./data/{symbol}'
     os.makedirs(folder_path, exist_ok=True)
 
-    start = 1704154200000  # 2024-01-01 08:10:00 不能精确确定start时间点，只能给个限制
+    start = 1704154200000  # 2024-01-01 08:10:00 
     end = 1731814200000  # 2024-11-17 11:30:00  以end为主,start随意，我是根据跑出来结果改的start
     end_time = int(end)  # 转化为毫秒 ms 时间戳
     start_time = int(end_time - limit * 60 * 1000)
 
-    while start_time > start:  # 2024-01-01 08:10:00
+    while end_time >= start:  # 2024-01-01 08:10:00
         file_path = f'./data/{symbol}/{end_time}.pkl'
 
 
