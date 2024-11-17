@@ -121,12 +121,12 @@ class BollStrategy(Strategy):
                     top = ma + 3*std
                     if bars[-1][5] <= floor:
                         # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
-                        signal = SignalEvent(bars[0][0], bars[0][1], 'LONG', strength=0.1)
+                        signal = SignalEvent(bars[0][0], bars[0][1], 'LONG', strength=0.001)
                         self.events.put(signal)
                     
 
                     for order in self.port.order_history:
-                        if  bars[-1][5] <= order['price']*0.95 or bars[-1][5] >= order['price']*1.02:
+                        if  bars[-1][5] <= order['price']*0.9 or bars[-1][5] >= order['price']*1.05:
                             order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
                             self.events.put(order_event)
                         else: new_order_history.append(order)

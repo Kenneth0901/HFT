@@ -39,9 +39,9 @@ class DataHandler(object):
         raise NotImplementedError("Should implement update_bars()")
     
 
-class HistoricParquetDataHandler(DataHandler):
+class HistoricDataHandler(DataHandler):
     """
-    HistoricCSVDataHandler is designed to read Parquet files for
+    HistoricDataHandler is designed to read Parquet files for
     each requested symbol from disk and provide an interface
     to obtain the "latest" bar in a manner identical to a live
     trading interface. 
@@ -84,7 +84,7 @@ class HistoricParquetDataHandler(DataHandler):
         comb_index = None
         for s in self.symbol_list:
             # Load the file with no header information, indexed on date
-            self.symbol_data[s] = pd.read_parquet(os.path.join(self.dir, '%s.parquet' % s))[:300000]
+            self.symbol_data[s] = pd.read_pickle(os.path.join(self.dir, '%s.pkl' % s))[:300000]
             # self.symbol_data[s].rename(
             #     columns={
             #         '0': 'start_time', 
@@ -135,11 +135,11 @@ class HistoricParquetDataHandler(DataHandler):
     def _get_new_bar(self, symbol):
         """
         Returns the latest bar from the data feed as a tuple of 
-        (symbol, datetime, open, low, high, volume, end_time, qutoe_volume, trades, taker_base_volume, taker_quote_volume).
+        (symbol, datetime, open, high, low, close, volume, end_time, qutoe_volume, trades, taker_base_volume, taker_quote_volume).
         """
         for b in self.symbol_data[symbol]:
             yield tuple([symbol, pd.to_datetime(b[0], unit='ms'), 
-                        b[1].iloc[0], b[1].iloc[1], b[1].iloc[2], b[1].iloc[3], b[1].iloc[4], b[1].iloc[5], b[1].iloc[6], b[1].iloc[7], b[1].iloc[8]])
+                        b[1].iloc[0], b[1].iloc[1], b[1].iloc[2], b[1].iloc[3], b[1].iloc[4], b[1].iloc[6], b[1].iloc[7], b[1].iloc[8], b[1].iloc[9]])
             
 
 

@@ -1,4 +1,4 @@
-from datahandler import HistoricParquetDataHandler
+from datahandler import HistoricDataHandler
 from execution import SimulatedExecutionHandler
 from portfolio import NaivePortfolio
 from strategy import BollStrategy
@@ -7,10 +7,10 @@ from time import time
 import pandas as pd
 
 
-start_date = pd.to_datetime(1704027720000, unit='ms')
+start_date = pd.to_datetime(1704154200000, unit='ms')
 
 events = queue.Queue(maxsize=0)
-bars = HistoricParquetDataHandler(events, './', ['BTCUSDT'])
+bars = HistoricDataHandler(events, './merge', ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'TRXUSDT'])
 port = NaivePortfolio(bars, events, start_date)
 strategy = BollStrategy(bars, port, events)
 broker = SimulatedExecutionHandler(bars, events)

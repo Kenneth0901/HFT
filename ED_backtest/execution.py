@@ -4,7 +4,7 @@ from queue import Queue
 from abc import ABCMeta, abstractmethod
 
 from event import FillEvent, OrderEvent
-from datahandler import HistoricParquetDataHandler
+from datahandler import HistoricDataHandler
 
 class ExecutionHandler(object):
     """
@@ -44,7 +44,7 @@ class SimulatedExecutionHandler(ExecutionHandler):
     handler.
     """
     
-    def __init__(self, bars:HistoricParquetDataHandler, events):
+    def __init__(self, bars:HistoricDataHandler, events):
         """
         Initialises the handler, setting the event queues
         up internally.

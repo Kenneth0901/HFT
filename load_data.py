@@ -4,6 +4,7 @@ import time
 import logging
 import os
 
+# 设置日志记录
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='load_data.log', mode='w')
@@ -12,34 +13,55 @@ formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-
 BASE_URL = 'https://api.binance.com'
 kline = '/api/v3/klines'
 limit = 1000
-symbol = 'BTCUSDT'
-end_time = int(time.time() //60 *60 * 1000) #转化为毫秒 ms时间戳
-start_time = int(end_time - limit * 60 * 1000)
+
+# 符号列表
+symbol_ls = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'TRXUSDT']
+
+# 为每个符号创建数据文件夹
+for symbol in symbol_ls:
+    folder_path = f'./data/{symbol}'
+    os.makedirs(folder_path, exist_ok=True)
+
+    start = 1704154200000  # 2024-01-01 08:10:00 不能精确确定start时间点，只能给个限制
+    end = 1731814200000  # 2024-11-17 11:30:00  以end为主,start随意，我是根据跑出来结果改的start
+    end_time = int(end)  # 转化为毫秒 ms 时间戳
+    start_time = int(end_time - limit * 60 * 1000)
+
+    while start_time > start:  # 2024-01-01 08:10:00
+        file_path = f'./data/{symbol}/{end_time}.pkl'
 
 
-folder_path = f'./data/{symbol}'
-os.makedirs(folder_path, exist_ok=True)
+        if os.path.exists(file_path):
+            end_time = start_time
+            start_time = int(end_time - limit * 60 * 1000)
+            continue
 
-while end_time > 1704067200000:
-    url = BASE_URL + kline + '?symbol=' + str(symbol) + '&interval=1m&limit=' + str(limit) + '&startTime=' + str(start_time) + '&endTime=' + str(end_time)
-    res = requests.get(url)
-    status_code = res.status_code
-    if status_code == 200:
-        data = res.json()
-        df = pd.DataFrame(res.json(), columns = {'start_time': '0', 'open': '1', 'high': '2', 'low': '3', 'close': '4', 'volume': '5', 'end_time': '6', 
-                                         'quote_volume': '7', 'trades': '8', 'taker_base_volume': '9', 'taker_quote_volume': '10', 'ignore': '11'})
-        df.set_index('start_time', inplace=True)
-        df.to_parquet(f'./data/{symbol}/{end_time}')
-        logger.info(f'finish {end_time}')
-        end_time = start_time
-        start_time = int(end_time - limit * 60 * 1000)
-        
-    else:
-        logger.error(f'Error in {end_time}')
-        time.sleep(5)
-        continue
-        
+        url = f"{BASE_URL}{kline}?symbol={symbol}&interval=1m&limit={limit}&startTime={start_time}&endTime={end_time}"
+        res = requests.get(url)
+        status_code = res.status_code
+
+        if status_code == 200:
+            data = res.json()
+            if data:
+                df = pd.DataFrame(data, columns=[
+                    'start_time', 'open', 'high', 'low', 'close', 'volume', 
+                    'end_time', 'quote_volume', 'trades', 
+                    'taker_base_volume', 'taker_quote_volume', 'ignore'
+                ])
+                df.set_index('start_time', inplace=True)
+                df.to_pickle(file_path)
+                logger.info(f'Successfully saved data for {symbol} at {end_time}')
+            else:
+                logger.warning(f'No data returned for {symbol} at {end_time}')
+            
+            end_time = start_time
+            start_time = int(end_time - limit * 60 * 1000)
+
+        else:
+            logger.error(f'Error fetching data for {symbol} at {end_time}, status code: {status_code}')
+            time.sleep(5) 
+
+    logger.info(f'Finished downloading data for {symbol}')
