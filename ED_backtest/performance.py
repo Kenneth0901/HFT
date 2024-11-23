@@ -3,7 +3,7 @@ import pandas as pd
 
 # performance.py
 
-def create_sharpe_ratio(returns, periods=365*24*60):
+def create_sharpe_ratio(returns, periods=365*8):
     """
     Create the Sharpe ratio for the strategy, based on a 
     benchmark of zero (i.e. no risk-free rate information).

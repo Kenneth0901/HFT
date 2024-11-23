@@ -90,9 +90,90 @@ class BuyAndHoldStrategy(Strategy):
                         self.events.put(signal)
                         self.bought[s] = True  
 
-                        
 
-class BollStrategy(Strategy):
+class MixTechStrategy(Strategy):
+
+    def __init__(self, bars, port:NaivePortfolio, events) -> None:
+        """
+        MACD+RSI+EMA判断开仓平仓
+        """
+        self.bars = bars
+        self.symbol_list = self.bars.symbol_list
+        self.events = events
+        self.port = port
+        self.initial_capital = port.initial_capital
+        self.ema_s = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+        self.ema_l = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+        self.macd = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+        self.signal = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+
+    def cal_boll(self, close:pd.Series):
+        ma = close.mean()
+        std = close.std()
+        floor = ma - 2*std
+        top = ma + 2*std
+        return ma, std, floor, top
+    
+    def cal_rsi(self, close:pd.Series):
+        rtn = close.pct_change()
+        gain = rtn[rtn>0].sum()
+        loss = -rtn[rtn<0].sum()
+        rs = gain/(loss+0.00000000000001)
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+
+    def update_index(self, bars):
+        if self.ema_s[bars[-1][0]] == 0.0:
+            self.ema_s[bars[-1][0]] = bars[-1][5]
+
+        if self.ema_l[bars[-1][0]] == 0.0:
+            self.ema_l[bars[-1][0]] = bars[-1][5]
+
+        self.ema_s[bars[-1][0]] = 0.08*bars[-1][5] + 0.92*self.ema_s[bars[-1][0]]
+        self.ema_l[bars[-1][0]] = 0.04*bars[-1][5] + 0.96*self.ema_l[bars[-1][0]]
+        self.macd[bars[-1][0]] = self.ema_s[bars[-1][0]] - self.ema_l[bars[-1][0]]
+        self.signal[bars[-1][0]] = 0.04*self.macd[bars[-1][0]] +0.96*self.signal[bars[-1][0]]
+        
+    #bar格式如下
+    # (0: symbol, 1: datetime, 2: open, 3: high, 4: low, 5: close, 6: volume, 7: qutoe_volume, 8: trades, 9: taker_base_volume, 10: taker_quote_volume).
+
+    def calculate_signals(self, event):
+        if event.type == 'MARKET':
+            new_order_history = []
+            N = 20
+
+
+            for s in self.symbol_list:
+
+                ####################################
+                bars = self.bars.get_latest_bars(s, N)
+                self.update_index(bars)
+                if len(bars) >= N:
+                    close = pd.DataFrame(bars)[5]
+                    boll_5 = self.cal_boll(close[-20:])
+                    rsi = self.cal_rsi(close[-20:])
+                    if  bars[-1][5] >=self.ema_l[s] and self.macd[s] >= self.signal[s] and rsi>=50:
+                        # (Symbol, Datetime, Type = LONG, SHORT)
+                        signal = SignalEvent(bars[-1][0], bars[-1][1], 'LONG', strength= self.initial_capital/bars[-1][5]*0.1)
+                        self.events.put(signal)
+                    
+                    for order in [o for o in self.port.order_history if o['symbol'] == s]:
+                        if  (bars[-1][5] < self.ema_l[s] and self.macd[s] < self.signal[s] and rsi<50) \
+                            or order['price'] <= bars[-1][5]*0.95 \
+                            or order['price'] >= bars[-1][5]*1.1:
+                            order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL', order_mark='CLOSE')
+                            self.events.put(order_event)
+                        else: new_order_history.append(order)
+                #####################################
+
+            self.port.order_history = new_order_history
+
+
+
+                        
+##############################################################
+class BollandMACDStrategy(Strategy):
+
     def __init__(self, bars, port:NaivePortfolio, events) -> None:
         """
         布林带下轨建仓，10%止盈止损
@@ -102,38 +183,58 @@ class BollStrategy(Strategy):
         self.events = events
         self.port = port
         self.initial_capital = port.initial_capital
+        self.ema_s = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+        self.ema_l = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+        self.macd = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
+        self.signal = dict( (k,v) for k, v in [(s, 0.0) for s in self.symbol_list] )
 
+    def cal_boll(self, close:pd.Series):
+        ma = close.mean()
+        std = close.std()
+        floor = ma - 3*std
+        top = ma + 3*std
+        return ma, std, floor, top
+    
+
+    def update_index(self, bars):
+        if self.ema_s[bars[-1][0]] == 0.0:
+            self.ema_s[bars[-1][0]] = bars[-1][5]
+
+        if self.ema_l[bars[-1][0]] == 0.0:
+            self.ema_l[bars[-1][0]] = bars[-1][5]
+
+        self.ema_s[bars[-1][0]] = 0.08*bars[-1][5] + 0.92*self.ema_s[bars[-1][0]]
+        self.ema_l[bars[-1][0]] = 0.04*bars[-1][5] + 0.96*self.ema_l[bars[-1][0]]
+        self.macd[bars[-1][0]] = self.ema_s[bars[-1][0]] - self.ema_l[bars[-1][0]]
+        self.signal[bars[-1][0]] = 0.04*self.macd[bars[-1][0]] +0.96*self.signal[bars[-1][0]]
+        
+    #bar格式如下
+    # (0: symbol, 1: datetime, 2: open, 3: high, 4: low, 5: close, 6: volume, 7: qutoe_volume, 8: trades, 9: taker_base_volume, 10: taker_quote_volume).
 
     def calculate_signals(self, event):
         if event.type == 'MARKET':
             new_order_history = []
             N = 100
             for s in self.symbol_list:
-                bars = self.bars.get_latest_bars(s, N)
+                bars = self.bars.get_latest_bars(s, 100)
+                self.update_index(bars)
                 if len(bars) >= N:
-                        
-    #bar格式如下
-    # (0: symbol, 1: datetime, 2: open, 3: high, 4: low, 5: close, 6: volume, 7: qutoe_volume, 8: trades, 9: taker_base_volume, 10: taker_quote_volume).
-                    close = pd.DataFrame(bars)[5][::5]
-                    ma = close.mean()
-                    std = close.std()
-                    floor = ma - 3*std
-                    top = ma + 3*std
-                    if bars[-1][5] <= floor:
-                        # (Symbol, Datetime, Type = LONG, SHORT or EXIT)
-                        signal = SignalEvent(bars[-1][0], bars[-1][1], 'LONG', strength= self.initial_capital//bars[-1][5]*0.01)
+                    close = pd.DataFrame(bars)[::5][5]
+                    boll_5 = self.cal_boll(close[-20:])
+                    if  bars[-1][5] <= boll_5[2] and self.macd[bars[-1][0]] >= self.signal[bars[-1][0]]*1.03:
+                        # (Symbol, Datetime, Type = LONG, SHORT)
+                        signal = SignalEvent(bars[-1][0], bars[-1][1], 'LONG', strength= self.initial_capital/bars[-1][5]*0.01)
                         self.events.put(signal)
                     
 
                     for order in [o for o in self.port.order_history if o['symbol'] == s]:
-                        if  bars[-1][5] <= order['price']*0.95 or bars[-1][5] >= order['price']*1.05 or order['price'] >= top:
-                            order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL')
+                        if  bars[-1][5] <= order['price']*0.95 or bars[-1][5] >= order['price']*1.01:
+                            order_event = OrderEvent(order['symbol'], 'MKT', order['quantity'], 'SELL', order_mark='CLOSE')
                             self.events.put(order_event)
                         else: new_order_history.append(order)
 
             self.port.order_history = new_order_history
-
-                    
+       
 
 
 

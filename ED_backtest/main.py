@@ -8,7 +8,7 @@ import os
 from datahandler import HistoricDataHandler
 from execution import SimulatedExecutionHandler
 from portfolio import NaivePortfolio
-from strategy import BollStrategy
+from strategy import MixTechStrategy
 
 log_path = './ED_backtest/logs/'
 os.makedirs(log_path, exist_ok=True)
@@ -27,7 +27,7 @@ start_date = pd.to_datetime(1704094200000, unit='ms')
 events = queue.Queue(maxsize=0)
 bars = HistoricDataHandler(events, './merge', ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'TRXUSDT'])
 port = NaivePortfolio(bars, events, start_date)
-strategy = BollStrategy(bars, port, events)
+strategy = MixTechStrategy(bars, port, events)
 broker = SimulatedExecutionHandler(bars, events)
 
 
@@ -48,6 +48,7 @@ while True:
                 if event.type == 'MARKET':
                     strategy.calculate_signals(event)
                     port.update_positions_and_holdings(event)
+                    logger.info(f'''Total: {port.all_holdings[-1]['total']}''')
 
                 elif event.type == 'SIGNAL':
                     logger.info(f'Signal at {event.datetime}')
@@ -60,9 +61,7 @@ while True:
                     logger.info(f'{event.timestamp} {event.symbol} {event.direction} {event.quantity} {event.fill_cost}')
                     port.update_fill(event)
 
-print('Final Positions and Holdings')
-print(port.current_positions)
-print(port.current_holdings)
+
 port.create_equity_curve_dataframe()
 port.output_summary_stats()
 port.plot_pnl()

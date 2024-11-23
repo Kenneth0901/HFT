@@ -84,7 +84,7 @@ class HistoricDataHandler(DataHandler):
         comb_index = None
         for s in self.symbol_list:
             # Load the file with no header information, indexed on date
-            self.symbol_data[s] = pd.read_pickle(os.path.join(self.dir, '%s.pkl' % s))[:300000]
+            self.symbol_data[s] = pd.read_pickle(os.path.join(self.dir, '%s.pkl' % s))[::180][:50000]
             # self.symbol_data[s].rename(
             #     columns={
             #         '0': 'start_time', 

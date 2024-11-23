@@ -55,7 +55,7 @@ class SimulatedExecutionHandler(ExecutionHandler):
         self.bars = bars
         self.events = events
 
-    def execute_order(self, event):
+    def execute_order(self, event:OrderEvent):
         """
         Simply converts Order objects into Fill objects naively,
         i.e. without any latency, slippage or fill ratio problems.
@@ -66,5 +66,5 @@ class SimulatedExecutionHandler(ExecutionHandler):
         if event.type == 'ORDER':
             bars = self.bars.get_latest_bars(event.symbol, N=1)
             fill_event = FillEvent(bars[0][1], event.symbol,
-                                   'ARCA', event.quantity, event.direction, fill_cost = bars[0][5], commission=None)
+                                   'ARCA', event.quantity, event.direction, fill_cost = bars[0][5], mark =event.order_mark, commission=None)
             self.events.put(fill_event)
